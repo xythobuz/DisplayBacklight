@@ -1,0 +1,37 @@
+{
+  "DVTSourceControlWorkspaceBlueprintPrimaryRemoteRepositoryKey" : "AB48BACB8946F305FD9B21DE9855B0A6C83AC703",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyRepositoryLocationsKey" : {
+
+  },
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyStatesKey" : {
+    "10CC2F1E3D4AA1768B20E4ECDF5C6C9B76C1AE64" : 0,
+    "AB48BACB8946F305FD9B21DE9855B0A6C83AC703" : 0,
+    "9D6FF97A89F512CD81EAE1A971A1D2EB03E03F7C" : 0
+  },
+  "DVTSourceControlWorkspaceBlueprintIdentifierKey" : "00D44A58-6D35-4699-B211-AA592656F9E4",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyPathsKey" : {
+    "10CC2F1E3D4AA1768B20E4ECDF5C6C9B76C1AE64" : "CaseLights\/JSystemInfoKit\/",
+    "AB48BACB8946F305FD9B21DE9855B0A6C83AC703" : "CaseLights\/",
+    "9D6FF97A89F512CD81EAE1A971A1D2EB03E03F7C" : "CaseLights\/EZAudio\/"
+  },
+  "DVTSourceControlWorkspaceBlueprintNameKey" : "CaseLights",
+  "DVTSourceControlWorkspaceBlueprintVersion" : 204,
+  "DVTSourceControlWorkspaceBlueprintRelativePathToProjectKey" : "CaseLights.xcodeproj",
+  "DVTSourceControlWorkspaceBlueprintRemoteRepositoriesKey" : [
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/xythobuz\/JSystemInfoKit.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "10CC2F1E3D4AA1768B20E4ECDF5C6C9B76C1AE64"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/syedhali\/EZAudio.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "9D6FF97A89F512CD81EAE1A971A1D2EB03E03F7C"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "xythobuz.de:\/home\/thomas\/CaseLights.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "AB48BACB8946F305FD9B21DE9855B0A6C83AC703"
+    }
+  ]
+}
