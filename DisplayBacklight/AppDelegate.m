@@ -10,11 +10,24 @@
 #import "Serial.h"
 #import "Screenshot.h"
 
+// This defined the update-speed of the Ambilight, in seconds.
+// With a baudrate of 115200 and 156 LEDs and 14-bytes Magic-Word,
+// theoretically you could transmit:
+//     115200 / (14 + (156 * 3) * 8) =~ 30 Frames per Second
+// Inserting (1.0 / 30.0) here would try to reach these 30FPS,
+// but will probably cause high CPU-Usage.
+// (Run-Time of the algorithm is ignored here, so real speed will be
+// slightly lower.)
+#define DISPLAY_DELAY (1.0 / 30.0)
+
+// Magic identifying string used to differntiate start of packets.
+// Has to be the same here and in the Arduino Sketch.
+#define MAGIC_WORD @"xythobuzRGBled"
+
 // These are the values stored persistently in the preferences
 #define PREF_SERIAL_PORT @"SerialPort"
 #define PREF_BRIGHTNESS @"Brightness"
-
-#define DISPLAY_DELAY (1.0 / 10.0)
+#define PREF_TURNED_ON @"IsEnabled"
 
 @interface AppDelegate ()
 
@@ -51,12 +64,14 @@
     NSUserDefaults *store = [NSUserDefaults standardUserDefaults];
     NSMutableDictionary *appDefaults = [NSMutableDictionary dictionaryWithObject:@"" forKey:PREF_SERIAL_PORT];
     [appDefaults setObject:[NSNumber numberWithFloat:50.0] forKey:PREF_BRIGHTNESS];
+    [appDefaults setObject:[NSNumber numberWithBool:NO] forKey:PREF_TURNED_ON];
     [store registerDefaults:appDefaults];
     [store synchronize];
     
     // Load existing configuration values
     NSString *savedPort = [store stringForKey:PREF_SERIAL_PORT];
     float brightness = [store floatForKey:PREF_BRIGHTNESS];
+    BOOL ambilightIsOn = [store boolForKey:PREF_TURNED_ON];
     
     // Prepare status bar menu
     statusImage = [NSImage imageNamed:@"MenuIcon"];
@@ -71,7 +86,7 @@
     [brightnessLabel setTitle:[NSString stringWithFormat:@"Value: %.0f%%", brightness]];
     
     // Prepare serial port menu
-    BOOL startTimer = NO;
+    BOOL foundPort = NO;
     NSArray *ports = [Serial listSerialPorts];
     if ([ports count] > 0) {
         [menuPorts removeAllItems];
@@ -82,29 +97,42 @@
             
             // Set Enabled if it was used the last time
             if ((savedPort != nil) && [[ports objectAtIndex:i] isEqualToString:savedPort]) {
-                [[menuPorts itemAtIndex:i] setState:NSOnState];
-                
                 // Try to open serial port
                 [serial setPortName:savedPort];
-                if ([serial openPort]) {
-                    // Unselect it when an error occured opening the port
-                    [[menuPorts itemAtIndex:i] setState:NSOffState];
-                } else {
-                    startTimer = YES;
+                if (![serial openPort]) {
+                    foundPort = YES;
+                    [[menuPorts itemAtIndex:i] setState:NSOnState];
                 }
             }
         }
         
-        if (!startTimer) {
-            // TODO try to find out new UART port name for controller
+        if (!foundPort) {
+            // I'm using a cheap chinese Arduino Nano clone with a CH340 chipset.
+            // This driver creates device-files in /dev/cu.* that don't correspond
+            // to the chip-id and change every time the adapter is re-enumerated.
+            // That means we may have to try and find the device again after the
+            // stored name does no longer exist. In this case, we simply try the first
+            // device that starts with /dev/cu.wchusbserial*...
+            for (int i = 0; i < [ports count]; i++) {
+                if ([[ports objectAtIndex:i] hasPrefix:@"/dev/cu.wchusbserial"]) {
+                    // Try to open serial port
+                    [serial setPortName:savedPort];
+                    if (![serial openPort]) {
+                        [[menuPorts itemAtIndex:i] setState:NSOnState];
+                        
+                        // Reattempt next matching device when opening this one fails.
+                        break;
+                    }
+                }
+            }
         }
     }
     
     [Screenshot init:self];
     lastDisplayIDs = [Screenshot listDisplays];
     
-    if (startTimer) {
-        timer = [NSTimer scheduledTimerWithTimeInterval:DISPLAY_DELAY target:self selector:@selector(visualizeDisplay:) userInfo:nil repeats:YES];
+    if (ambilightIsOn) {
+        timer = [NSTimer scheduledTimerWithTimeInterval:DISPLAY_DELAY target:self selector:@selector(visualizeDisplay:) userInfo:nil repeats:NO];
         
         [buttonAmbilight setState:NSOnState];
     }
@@ -189,10 +217,22 @@
             [timer invalidate];
             timer = nil;
         }
+        
+        [self sendNullFrame];
+        
+        // Store state
+        NSUserDefaults *store = [NSUserDefaults standardUserDefaults];
+        [store setObject:[NSNumber numberWithBool:NO] forKey:PREF_TURNED_ON];
+        [store synchronize];
     } else {
         [sender setState:NSOnState];
         
-        timer = [NSTimer scheduledTimerWithTimeInterval:DISPLAY_DELAY target:self selector:@selector(visualizeDisplay:) userInfo:nil repeats:YES];
+        timer = [NSTimer scheduledTimerWithTimeInterval:DISPLAY_DELAY target:self selector:@selector(visualizeDisplay:) userInfo:nil repeats:NO];
+        
+        // Store state
+        NSUserDefaults *store = [NSUserDefaults standardUserDefaults];
+        [store setObject:[NSNumber numberWithBool:YES] forKey:PREF_TURNED_ON];
+        [store synchronize];
     }
 }
 
@@ -214,7 +254,7 @@
         restartAmbilight = NO;
         [buttonAmbilight setState:NSOnState];
         
-        timer = [NSTimer scheduledTimerWithTimeInterval:DISPLAY_DELAY target:self selector:@selector(visualizeDisplay:) userInfo:nil repeats:YES];
+        timer = [NSTimer scheduledTimerWithTimeInterval:DISPLAY_DELAY target:self selector:@selector(visualizeDisplay:) userInfo:nil repeats:NO];
     }
 }
 
@@ -231,6 +271,72 @@
     [NSApp activateIgnoringOtherApps:YES];
     [application orderFrontStandardAboutPanel:self];
 }
+
+// ----------------------------------------------------
+// ------------ 'Ambilight' Visualizations ------------
+// ----------------------------------------------------
+
+// ToDo: add support for display names or IDs here, so we can distinguish
+// between multiple displays with the same resolution
+struct DisplayAssignment {
+    int width, height;
+};
+
+struct LEDStrand {
+    int idMin, idMax;
+    int display;
+    int startX, startY;
+    int direction;
+    int size;
+};
+
+#define DIR_LEFT 0
+#define DIR_RIGHT 1
+#define DIR_UP 2
+#define DIR_DOWN 3
+
+// ----------------------- Config starts here -----------------------
+
+// The idea behind this algorithm is very simple. It assumes that each LED strand
+// follows one edge of one of your displays. So one of the two coordinates should
+// always be zero or the width / height of your display.
+
+// Define the amount of LEDs in your strip here
+#define LED_COUNT 156
+
+// This defined how large the averaging-boxes should be in the dimension perpendicular
+// to the strand. So eg. for a bottom strand, how high the box should be in px.
+#define COLOR_AVERAGE_OTHER_DIMENSION_SIZE 150
+
+// Identify your displays here. Currently they're only distinguished by their resolution.
+// The ID will be the index in the list, so the first entry is display 0 and so on.
+struct DisplayAssignment displays[] = {
+    { 1920, 1080 },
+    {  900, 1600 }
+};
+
+// This defined the orientation and placement of your strands and is the most important part.
+// It begins with the LED IDs this strand includes, starting with ID 0 up to LED_COUNT - 1.
+// The third item is the display ID, defined by the previous struct.
+// The fourth and fifth items are the starting X and Y coordinates of the strand.
+// As described above, one should always be zero or the display width / height.
+// The sixth element is the direction the strand goes (no diagonals supported yet).
+// The last element is the size of the averaging-box for each LED, moving with the strand.
+// So, if your strand contains 33 LEDs and spans 1920 pixels, this should be (1920 / 33).
+struct LEDStrand strands[] = {
+    {   0,  32, 0, 1920, 1080,  DIR_LEFT, 1920 / 33 },
+    {  33,  51, 0,    0, 1080,    DIR_UP, 1080 / 19 },
+    {  52,  84, 0,    0,    0, DIR_RIGHT, 1920 / 33 },
+    {  85,  89, 1,    0,  250,    DIR_UP,  250 / 5 },
+    {  90, 106, 1,    0,    0, DIR_RIGHT,  900 / 17 },
+    { 107, 134, 1,  900,    0,  DIR_DOWN, 1600 / 28 },
+    { 135, 151, 1,  900, 1600,  DIR_LEFT,  900 / 17 },
+    { 152, 155, 1,    0, 1600,    DIR_UP,  180 / 4 }
+};
+
+// ------------------------ Config ends here ------------------------
+
+UInt8 ledColorData[LED_COUNT * 3];
 
 - (UInt32)calculateAverage:(unsigned char *)data Width:(NSInteger)width Height:(NSInteger)height SPP:(NSInteger)spp Alpha:(BOOL)alpha StartX:(NSInteger)startX StartY:(NSInteger)startY EndX:(NSInteger)endX EndY:(NSInteger)endY {
     int redC = 0, greenC = 1, blueC = 2;
@@ -268,47 +374,12 @@
     green /= count;
     blue /= count;
     
+    red *= [brightnessSlider floatValue] / 100.0f;
+    green *= [brightnessSlider floatValue] / 100.0f;
+    blue *= [brightnessSlider floatValue] / 100.0f;
+    
     return ((UInt32)red << 16) | ((UInt32)green << 8) | ((UInt32)blue);
 }
-
-struct DisplayAssignment {
-    int n;
-    int width, height;
-};
-
-struct LEDStrand {
-    int idMin, idMax;
-    int display;
-    int startX, startY;
-    int direction;
-    int size;
-};
-
-#define DIR_LEFT 0
-#define DIR_RIGHT 1
-#define DIR_UP 2
-#define DIR_DOWN 3
-
-// TODO remove first
-struct DisplayAssignment displays[] = {
-    { 0, 1920, 1080 },
-    { 1,  900, 1600 }
-};
-
-struct LEDStrand strands[] = {
-    {   0,  32, 0, 1920, 1080,  DIR_LEFT, 1920 / 33 },
-    {  33,  51, 0,    0, 1080,    DIR_UP, 1080 / 19 },
-    {  52,  84, 0,    0,    0, DIR_RIGHT, 1920 / 33 },
-    {  85,  89, 1,    0,  250,    DIR_UP,  250 / 5 },
-    {  90, 106, 1,    0,    0, DIR_RIGHT,  900 / 17 },
-    { 107, 134, 1,  900,    0,  DIR_DOWN, 1600 / 28 },
-    { 135, 151, 1,  900, 1600,  DIR_LEFT,  900 / 17 },
-    { 152, 155, 1,    0, 1600,    DIR_UP,  180 / 4 }
-};
-
-UInt8 ledColorData[156 * 3];
-
-#define COLOR_AVERAGE_OTHER_DIMENSION_SIZE 150
 
 - (void)visualizeSingleDisplay:(NSInteger)disp Data:(unsigned char *)data Width:(unsigned long)width Height:(unsigned long)height SPP:(NSInteger)spp Alpha:(BOOL)alpha {
     for (int i = 0; i < (sizeof(strands) / sizeof(strands[0])); i++) {
@@ -406,11 +477,13 @@ UInt8 ledColorData[156 * 3];
     }
     
     [self sendLEDFrame];
+    
+    timer = [NSTimer scheduledTimerWithTimeInterval:DISPLAY_DELAY target:self selector:@selector(visualizeDisplay:) userInfo:nil repeats:NO];
 }
 
 - (void)sendLEDFrame {
     if ([serial isOpen]) {
-        [serial sendString:@"xythobuzRGBled"];
+        [serial sendString:MAGIC_WORD];
         [serial sendData:(char *)ledColorData withLength:(sizeof(ledColorData) / sizeof(ledColorData[0]))];
     }
 }
@@ -420,11 +493,6 @@ UInt8 ledColorData[156 * 3];
         ledColorData[i] = 0;
     }
     [self sendLEDFrame];
-}
-
-+ (double)map:(double)val FromMin:(double)fmin FromMax:(double)fmax ToMin:(double)tmin ToMax:(double)tmax {
-    double norm = (val - fmin) / (fmax - fmin);
-    return (norm * (tmax - tmin)) + tmin;
 }
 
 @end

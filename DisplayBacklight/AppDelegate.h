@@ -17,7 +17,5 @@
 - (void)stopAmbilight;
 - (void)newDisplayList:(NSArray *)displayIDs;
 
-+ (double)map:(double)val FromMin:(double)fmin FromMax:(double)fmax ToMin:(double)tmin ToMax:(double)tmax;
-
 @end
 
