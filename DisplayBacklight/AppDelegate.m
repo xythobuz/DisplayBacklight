@@ -41,6 +41,28 @@ struct DisplayAssignment displays[] = {
 // So, if your strand contains 33 LEDs and spans 1920 pixels, this should be (1920 / 33).
 // By default you can always use (length in pixel / LED count) for the last item, except
 // if your strand does not span the whole length of this screen edge.
+//
+// For example, this is my personal dual-monitor home setup. The strand starts at the 0
+// in the bottom-right of D1, then goes left arount D1, and from there around D2 back
+// to the start.
+//
+//                                       29
+//                                 |------------|
+//                               5 | /|\ --> -->|
+//                  33             |  |         |
+//     |---------------------------|         |  |
+//     |-->   -->   -->   -->   -->|        \|/ |
+//     |                           |            |
+//  19 | /|\        D1             |     D2     | 48
+//     |  |      1920x1080         |  900x1600  |
+//     |                           |            |
+//     |<--   <--   <--   <--   <--| 0       |  |
+//     |---------------------------| /|\    \|/ |
+//                  33             |  |         |
+//                               4 |  <--  <--  |
+//                                 |------------|
+//                                       29
+
 struct LEDStrand strands[] = {
     {   0, 33, 0, 1920, 1080,  DIR_LEFT, 1920 / 33 },
     {  33, 19, 0,    0, 1080,    DIR_UP, 1080 / 19 },
