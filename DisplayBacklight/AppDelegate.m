@@ -10,15 +10,61 @@
 #import "Serial.h"
 #import "Screenshot.h"
 
-// This defined the update-speed of the Ambilight, in seconds.
+// ----------------------- Config starts here -----------------------
+
+// The idea behind this algorithm is very simple. It assumes that each LED strand
+// follows one edge of one of your displays. So one of the two coordinates should
+// always be zero or the width / height of your display.
+
+// Define the amount of LEDs in your strip here
+#define LED_COUNT 156
+
+// This defines how large the averaging-boxes should be in the dimension perpendicular
+// to the strand. So eg. for a bottom strand, how high the box should be in px.
+#define COLOR_AVERAGE_OTHER_DIMENSION_SIZE 100
+
+// Identify your displays here. Currently they're only distinguished by their resolution.
+// The ID will be the index in the list, so the first entry is display 0 and so on.
+struct DisplayAssignment displays[] = {
+    { 1920, 1080 },
+    {  900, 1600 }
+};
+
+// This defines the orientation and placement of your strands and is the most important part.
+// It begins with the LED IDs this strand includes, starting with ID 0 up to LED_COUNT - 1.
+// The second item is the length of this strip, as in the count of LEDs in it.
+// The third item is the display ID, defined by the previous struct.
+// The fourth and fifth items are the starting X and Y coordinates of the strand.
+// As described above, one should always be zero or the display width / height.
+// The sixth element is the direction the strand goes (no diagonals supported yet).
+// The last element is the size of the averaging-box for each LED, moving with the strand.
+// So, if your strand contains 33 LEDs and spans 1920 pixels, this should be (1920 / 33).
+// By default you can always use (length in pixel / LED count) for the last item, except
+// if your strand does not span the whole length of this screen edge.
+struct LEDStrand strands[] = {
+    {   0, 33, 0, 1920, 1080,  DIR_LEFT, 1920 / 33 },
+    {  33, 19, 0,    0, 1080,    DIR_UP, 1080 / 19 },
+    {  52, 33, 0,    0,    0, DIR_RIGHT, 1920 / 33 },
+    {  85,  5, 1,    0,  250,    DIR_UP,  250 / 5 },
+    {  90, 17, 1,    0,    0, DIR_RIGHT,  900 / 17 },
+    { 107, 28, 1,  900,    0,  DIR_DOWN, 1600 / 28 },
+    { 135, 17, 1,  900, 1600,  DIR_LEFT,  900 / 17 },
+    { 152,  4, 1,    0, 1600,    DIR_UP,  180 / 4 }
+};
+
+// This defines the update-speed of the Ambilight, in seconds.
 // With a baudrate of 115200 and 156 LEDs and 14-bytes Magic-Word,
 // theoretically you could transmit:
-//     115200 / (14 + (156 * 3) * 8) =~ 30 Frames per Second
+//     115200 / (14 + (156 * 3)) * 8 =~ 30 Frames per Second
 // Inserting (1.0 / 30.0) here would try to reach these 30FPS,
 // but will probably cause high CPU-Usage.
 // (Run-Time of the algorithm is ignored here, so real speed will be
 // slightly lower.)
 #define DISPLAY_DELAY (1.0 / 30.0)
+
+// How many pixels to skip when calculating the average color.
+// Slightly increases performance and doesn't really alter the result.
+#define AVERAGE_PIXEL_SKIP 2
 
 // Magic identifying string used to differntiate start of packets.
 // Has to be the same here and in the Arduino Sketch.
@@ -28,6 +74,11 @@
 #define PREF_SERIAL_PORT @"SerialPort"
 #define PREF_BRIGHTNESS @"Brightness"
 #define PREF_TURNED_ON @"IsEnabled"
+
+// If this is defined it will print the FPS every DEBUG_PRINT_FPS seconds
+//#define DEBUG_PRINT_FPS 10
+
+// ------------------------ Config ends here ------------------------
 
 @interface AppDelegate ()
 
@@ -272,69 +323,23 @@
     [application orderFrontStandardAboutPanel:self];
 }
 
+- (void)sendLEDFrame {
+    if ([serial isOpen]) {
+        [serial sendString:MAGIC_WORD];
+        [serial sendData:(char *)ledColorData withLength:(sizeof(ledColorData) / sizeof(ledColorData[0]))];
+    }
+}
+
+- (void)sendNullFrame {
+    for (int i = 0; i < (sizeof(ledColorData) / sizeof(ledColorData[0])); i++) {
+        ledColorData[i] = 0;
+    }
+    [self sendLEDFrame];
+}
+
 // ----------------------------------------------------
 // ------------ 'Ambilight' Visualizations ------------
 // ----------------------------------------------------
-
-// ToDo: add support for display names or IDs here, so we can distinguish
-// between multiple displays with the same resolution
-struct DisplayAssignment {
-    int width, height;
-};
-
-struct LEDStrand {
-    int idMin, idMax;
-    int display;
-    int startX, startY;
-    int direction;
-    int size;
-};
-
-#define DIR_LEFT 0
-#define DIR_RIGHT 1
-#define DIR_UP 2
-#define DIR_DOWN 3
-
-// ----------------------- Config starts here -----------------------
-
-// The idea behind this algorithm is very simple. It assumes that each LED strand
-// follows one edge of one of your displays. So one of the two coordinates should
-// always be zero or the width / height of your display.
-
-// Define the amount of LEDs in your strip here
-#define LED_COUNT 156
-
-// This defined how large the averaging-boxes should be in the dimension perpendicular
-// to the strand. So eg. for a bottom strand, how high the box should be in px.
-#define COLOR_AVERAGE_OTHER_DIMENSION_SIZE 150
-
-// Identify your displays here. Currently they're only distinguished by their resolution.
-// The ID will be the index in the list, so the first entry is display 0 and so on.
-struct DisplayAssignment displays[] = {
-    { 1920, 1080 },
-    {  900, 1600 }
-};
-
-// This defined the orientation and placement of your strands and is the most important part.
-// It begins with the LED IDs this strand includes, starting with ID 0 up to LED_COUNT - 1.
-// The third item is the display ID, defined by the previous struct.
-// The fourth and fifth items are the starting X and Y coordinates of the strand.
-// As described above, one should always be zero or the display width / height.
-// The sixth element is the direction the strand goes (no diagonals supported yet).
-// The last element is the size of the averaging-box for each LED, moving with the strand.
-// So, if your strand contains 33 LEDs and spans 1920 pixels, this should be (1920 / 33).
-struct LEDStrand strands[] = {
-    {   0,  32, 0, 1920, 1080,  DIR_LEFT, 1920 / 33 },
-    {  33,  51, 0,    0, 1080,    DIR_UP, 1080 / 19 },
-    {  52,  84, 0,    0,    0, DIR_RIGHT, 1920 / 33 },
-    {  85,  89, 1,    0,  250,    DIR_UP,  250 / 5 },
-    {  90, 106, 1,    0,    0, DIR_RIGHT,  900 / 17 },
-    { 107, 134, 1,  900,    0,  DIR_DOWN, 1600 / 28 },
-    { 135, 151, 1,  900, 1600,  DIR_LEFT,  900 / 17 },
-    { 152, 155, 1,    0, 1600,    DIR_UP,  180 / 4 }
-};
-
-// ------------------------ Config ends here ------------------------
 
 UInt8 ledColorData[LED_COUNT * 3];
 
@@ -361,7 +366,7 @@ UInt8 ledColorData[LED_COUNT * 3];
     }
     
     unsigned long red = 0, green = 0, blue = 0, count = 0;
-    for (NSInteger i = xa; i < xb; i++) {
+    for (NSInteger i = xa; i < xb; i += AVERAGE_PIXEL_SKIP) {
         for (NSInteger j = ya; j < yb; j++) {
             count++;
             unsigned long index = i + (j * width);
@@ -396,7 +401,7 @@ UInt8 ledColorData[LED_COUNT * 3];
                 blockHeight = strands[i].size;
             }
             
-            for (int led = strands[i].idMin; led <= strands[i].idMax; led++) {
+            for (int led = strands[i].idMin; led < (strands[i].idMin + strands[i].count); led++) {
                 // First move appropriately in the direction of the strand
                 unsigned long endX = x, endY = y;
                 if (strands[i].direction == DIR_LEFT) {
@@ -428,7 +433,6 @@ UInt8 ledColorData[LED_COUNT * 3];
                 // Calculate average color for this led
                 UInt32 color = [self calculateAverage:data Width:width Height:height SPP:spp Alpha:alpha StartX:x StartY:y EndX:endX EndY:endY];
                 
-                
                 ledColorData[led * 3] = (color & 0xFF0000) >> 16;
                 ledColorData[(led * 3) + 1] = (color & 0x00FF00) >> 8;
                 ledColorData[(led * 3) + 2] = color & 0x0000FF;
@@ -445,6 +449,14 @@ UInt8 ledColorData[LED_COUNT * 3];
 }
 
 - (void)visualizeDisplay:(NSTimer *)time {
+#ifdef DEBUG_PRINT_FPS
+    static NSInteger frameCount = 0;
+    static NSDate *lastPrintTime = nil;
+    if (lastPrintTime == nil) {
+        lastPrintTime = [NSDate date];
+    }
+#endif
+    
     //NSLog(@"Running Ambilight-Algorithm (%lu)...", (unsigned long)[lastDisplayIDs count]);
     
     // Create a Screenshot for all connected displays
@@ -478,21 +490,18 @@ UInt8 ledColorData[LED_COUNT * 3];
     
     [self sendLEDFrame];
     
+#ifdef DEBUG_PRINT_FPS
+    frameCount++;
+    NSDate *now = [NSDate date];
+    NSTimeInterval interval = [now timeIntervalSinceDate:lastPrintTime];
+    if (interval >= DEBUG_PRINT_FPS) {
+        NSLog(@"FPS: %.2f", frameCount / interval);
+        frameCount = 0;
+        lastPrintTime = now;
+    }
+#endif
+    
     timer = [NSTimer scheduledTimerWithTimeInterval:DISPLAY_DELAY target:self selector:@selector(visualizeDisplay:) userInfo:nil repeats:NO];
-}
-
-- (void)sendLEDFrame {
-    if ([serial isOpen]) {
-        [serial sendString:MAGIC_WORD];
-        [serial sendData:(char *)ledColorData withLength:(sizeof(ledColorData) / sizeof(ledColorData[0]))];
-    }
-}
-
-- (void)sendNullFrame {
-    for (int i = 0; i < (sizeof(ledColorData) / sizeof(ledColorData[0])); i++) {
-        ledColorData[i] = 0;
-    }
-    [self sendLEDFrame];
 }
 
 @end
