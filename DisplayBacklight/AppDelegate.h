@@ -7,10 +7,11 @@
 //
 
 #import <Cocoa/Cocoa.h>
+#import <AVFoundation/AVFoundation.h>
 
 @class Serial;
 
-@interface AppDelegate : NSObject <NSApplicationDelegate>
+@interface AppDelegate : NSObject <NSApplicationDelegate, AVCaptureVideoDataOutputSampleBufferDelegate>
 
 @property (weak) IBOutlet NSApplication *application;
 
@@ -23,6 +24,7 @@
 // between multiple displays with the same resolution
 struct DisplayAssignment {
     int width, height;
+    int shown;
 };
 
 struct LEDStrand {

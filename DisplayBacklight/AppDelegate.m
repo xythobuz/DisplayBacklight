@@ -25,9 +25,11 @@
 
 // Identify your displays here. Currently they're only distinguished by their resolution.
 // The ID will be the index in the list, so the first entry is display 0 and so on.
+// The third parameter is used internally for keeping track of the visualized displays,
+// simply set it to 0.
 struct DisplayAssignment displays[] = {
-    { 1920, 1080 },
-    {  900, 1600 }
+    { 1920, 1080, 0 },
+    {  900, 1600, 0 }
 };
 
 // This defines the orientation and placement of your strands and is the most important part.
@@ -43,7 +45,7 @@ struct DisplayAssignment displays[] = {
 // if your strand does not span the whole length of this screen edge.
 //
 // For example, this is my personal dual-monitor home setup. The strand starts at the 0
-// in the bottom-right of D1, then goes left arount D1, and from there around D2 back
+// in the bottom-right of D1, then goes left around D1, and from there around D2 back
 // to the start.
 //
 //                                       29
@@ -82,7 +84,7 @@ struct LEDStrand strands[] = {
 // but will probably cause high CPU-Usage.
 // (Run-Time of the algorithm is ignored here, so real speed will be
 // slightly lower.)
-#define DISPLAY_DELAY (1.0 / 30.0)
+#define DISPLAY_DELAY (1.0 / 10.0)
 
 // How many pixels to skip when calculating the average color.
 // Slightly increases performance and doesn't really alter the result.
@@ -98,7 +100,7 @@ struct LEDStrand strands[] = {
 #define PREF_TURNED_ON @"IsEnabled"
 
 // If this is defined it will print the FPS every DEBUG_PRINT_FPS seconds
-//#define DEBUG_PRINT_FPS 10
+#define DEBUG_PRINT_FPS 2.5
 
 // ------------------------ Config ends here ------------------------
 
@@ -117,6 +119,8 @@ struct LEDStrand strands[] = {
 @property (strong) Serial *serial;
 @property (strong) NSArray *lastDisplayIDs;
 @property (assign) BOOL restartAmbilight;
+@property (strong) NSArray *captureSessions;
+@property (strong) NSLock *lock;
 
 @end
 
@@ -127,11 +131,14 @@ struct LEDStrand strands[] = {
 @synthesize brightnessItem, brightnessSlider, brightnessLabel;
 @synthesize statusItem, statusImage, lastDisplayIDs;
 @synthesize timer, serial, restartAmbilight;
+@synthesize captureSessions, lock;
 
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification {
     serial = [[Serial alloc] init];
+    lock = [[NSLock alloc] init];
     timer = nil;
     restartAmbilight = NO;
+    captureSessions = nil;
     
     // Set default configuration values
     NSUserDefaults *store = [NSUserDefaults standardUserDefaults];
@@ -201,22 +208,14 @@ struct LEDStrand strands[] = {
         }
     }
     
+    // Enumerate displays and start ambilight if required
     [Screenshot init:self];
-    lastDisplayIDs = [Screenshot listDisplays];
-    
-    if (ambilightIsOn) {
-        timer = [NSTimer scheduledTimerWithTimeInterval:DISPLAY_DELAY target:self selector:@selector(visualizeDisplay:) userInfo:nil repeats:NO];
-        
-        [buttonAmbilight setState:NSOnState];
-    }
+    restartAmbilight = ambilightIsOn;
+    [self newDisplayList:[Screenshot listDisplays]];
 }
 
 - (void)applicationWillTerminate:(NSNotification *)aNotification {
-    // Stop previous timer setting
-    if (timer != nil) {
-        [timer invalidate];
-        timer = nil;
-    }
+    [self stopAmbilightTimer];
     
     // Remove display callback
     [Screenshot close:self];
@@ -226,6 +225,39 @@ struct LEDStrand strands[] = {
         [self sendNullFrame];
         [serial closePort];
     }
+}
+
+BOOL timerRunning = NO;
+
+- (void)startAmbilightTimer {
+    //timer = [NSTimer scheduledTimerWithTimeInterval:DISPLAY_DELAY target:self selector:@selector(visualizeDisplay:) userInfo:nil repeats:NO];
+    
+    timerRunning = YES;
+    if (captureSessions != nil) {
+        for (int i = 0; i < [captureSessions count]; i++) {
+            [[captureSessions objectAtIndex:i] startRunning];
+        }
+    }
+}
+
+- (void)stopAmbilightTimer {
+    // Stop previous timer setting
+    //if (timer != nil) {
+    //    [timer invalidate];
+    //    timer = nil;
+    //}
+    
+    timerRunning = NO;
+    if (captureSessions != nil) {
+        for (int i = 0; i < [captureSessions count]; i++) {
+            [[captureSessions objectAtIndex:i] stopRunning];
+        }
+    }
+}
+
+- (BOOL)isAmbilightRunning {
+    //return (timer != nil) ? YES : NO;
+    return timerRunning;
 }
 
 - (IBAction)relistSerialPorts:(id)sender {
@@ -265,11 +297,7 @@ struct LEDStrand strands[] = {
         [serial closePort];
     }
     
-    // Stop previous timer setting
-    if (timer != nil) {
-        [timer invalidate];
-        timer = nil;
-    }
+    [self stopAmbilightTimer];
     
     // Turn off ambilight button
     [buttonAmbilight setState:NSOffState];
@@ -284,13 +312,7 @@ struct LEDStrand strands[] = {
 - (IBAction)toggleAmbilight:(NSMenuItem *)sender {
     if ([sender state] == NSOnState) {
         [sender setState:NSOffState];
-        
-        // Stop previous timer setting
-        if (timer != nil) {
-            [timer invalidate];
-            timer = nil;
-        }
-        
+        [self stopAmbilightTimer];
         [self sendNullFrame];
         
         // Store state
@@ -299,8 +321,7 @@ struct LEDStrand strands[] = {
         [store synchronize];
     } else {
         [sender setState:NSOnState];
-        
-        timer = [NSTimer scheduledTimerWithTimeInterval:DISPLAY_DELAY target:self selector:@selector(visualizeDisplay:) userInfo:nil repeats:NO];
+        [self startAmbilightTimer];
         
         // Store state
         NSUserDefaults *store = [NSUserDefaults standardUserDefaults];
@@ -310,24 +331,64 @@ struct LEDStrand strands[] = {
 }
 
 - (void)stopAmbilight {
-    restartAmbilight = NO;
-    if (timer != nil) {
-        restartAmbilight = YES;
-        [timer invalidate];
-        timer = nil;
-        
-        [buttonAmbilight setState:NSOffState];
-    }
+    restartAmbilight = [self isAmbilightRunning];
+    [buttonAmbilight setState:NSOffState];
+    [self stopAmbilightTimer];
 }
 
 - (void)newDisplayList:(NSArray *)displayIDs {
     lastDisplayIDs = displayIDs;
     
+    // Create capturing sessions for each display
+    AVCaptureSession *sessions[[displayIDs count]];
+    for (int i = 0; i < [displayIDs count]; i++) {
+        sessions[i] = [[AVCaptureSession alloc] init];
+        [sessions[i] beginConfiguration];
+        
+        if ([sessions[i] canSetSessionPreset:AVCaptureSessionPresetHigh]) {
+            // TODO could use other presets?
+            sessions[i].sessionPreset = AVCaptureSessionPresetHigh;
+        } else {
+            NSLog(@"Can't set preset for display %ld!", (long)[[displayIDs objectAtIndex:i] integerValue]);
+        }
+        
+        // Add Screen Capture input for this screen
+        AVCaptureScreenInput *input = [[AVCaptureScreenInput alloc] initWithDisplayID:[[displayIDs objectAtIndex:i] unsignedIntValue]];
+        [input setCapturesCursor:YES]; // Enable mouse cursor capturing (ToDo disable for performance?)
+        [input setMinFrameDuration:CMTimeMakeWithSeconds(DISPLAY_DELAY, 1000)]; // Set out target frame rate
+        
+        if ([sessions[i] canAddInput:input]) {
+            [sessions[i] addInput:input];
+        } else {
+            NSLog(@"Can't add screen grab input for display %ld!", (long)[[displayIDs objectAtIndex:i] integerValue]);
+        }
+        
+        // Add Screen Capture output into this object
+        AVCaptureVideoDataOutput *output = [[AVCaptureVideoDataOutput alloc] init];
+        [output setSampleBufferDelegate:self queue:dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)];
+        [output setVideoSettings:@{ (NSString *)kCVPixelBufferPixelFormatTypeKey : @(kCVPixelFormatType_32BGRA) }];
+        
+        NSArray *formats = [output availableVideoCVPixelFormatTypes];
+        for (int i = 0; i < [formats count]; i++) {
+            NSLog(@"Supported format: 0x%lX", (long)[[formats objectAtIndex:i] integerValue]);
+        }
+        
+        if ([sessions[i] canAddOutput:output]) {
+            [sessions[i] addOutput:output];
+        } else {
+            NSLog(@"Can't add screen grab output for display %ld!", (long)[[displayIDs objectAtIndex:i] integerValue]);
+        }
+        
+        [sessions[i] commitConfiguration];
+        
+        NSLog(@"Added output for display %ld", (long)[[displayIDs objectAtIndex:i] integerValue]);
+    }
+    captureSessions = [NSArray arrayWithObjects:sessions count:[displayIDs count]];
+    
     if (restartAmbilight) {
         restartAmbilight = NO;
         [buttonAmbilight setState:NSOnState];
-        
-        timer = [NSTimer scheduledTimerWithTimeInterval:DISPLAY_DELAY target:self selector:@selector(visualizeDisplay:) userInfo:nil repeats:NO];
+        [self startAmbilightTimer];
     }
 }
 
@@ -346,6 +407,8 @@ struct LEDStrand strands[] = {
 }
 
 - (void)sendLEDFrame {
+    //NSLog(@"New LED frame");
+    
     if ([serial isOpen]) {
         [serial sendString:MAGIC_WORD];
         [serial sendData:(char *)ledColorData withLength:(sizeof(ledColorData) / sizeof(ledColorData[0]))];
@@ -366,9 +429,10 @@ struct LEDStrand strands[] = {
 UInt8 ledColorData[LED_COUNT * 3];
 
 - (UInt32)calculateAverage:(unsigned char *)data Width:(NSInteger)width Height:(NSInteger)height SPP:(NSInteger)spp Alpha:(BOOL)alpha StartX:(NSInteger)startX StartY:(NSInteger)startY EndX:(NSInteger)endX EndY:(NSInteger)endY {
-    int redC = 0, greenC = 1, blueC = 2;
+    //int redC = 0, greenC = 1, blueC = 2;
+    int redC = 2, greenC = 1, blueC = 0;
     if (alpha) {
-        redC = 1; greenC = 2; blueC = 3;
+        //redC = 3; greenC = 2; blueC = 1;
     }
     
     NSInteger xa, xb, ya, yb;
@@ -409,6 +473,8 @@ UInt8 ledColorData[LED_COUNT * 3];
 }
 
 - (void)visualizeSingleDisplay:(NSInteger)disp Data:(unsigned char *)data Width:(unsigned long)width Height:(unsigned long)height SPP:(NSInteger)spp Alpha:(BOOL)alpha {
+    displays[disp].shown = 1;
+    
     for (int i = 0; i < (sizeof(strands) / sizeof(strands[0])); i++) {
         if (strands[i].display == disp) {
             // Walk the strand, calculating value for each LED
@@ -468,8 +534,123 @@ UInt8 ledColorData[LED_COUNT * 3];
             }
         }
     }
+    
+    int doneCount = 0;;
+    for (int i = 0; i < (sizeof(displays) / sizeof(displays[0])); i++) {
+        if (displays[i].shown != 0) {
+            doneCount++;
+        }
+    }
+    
+    if (doneCount >= (sizeof(displays) / sizeof(displays[0]))) {
+        [self sendLEDFrame];
+        
+        for (int i = 0; i < (sizeof(displays) / sizeof(displays[0])); i++) {
+            displays[i].shown = 0;
+        }
+    }
 }
 
+- (void)captureOutput:(AVCaptureOutput *)captureOutput didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
+    [lock lock];
+
+#ifdef DEBUG_PRINT_FPS
+    static NSInteger frameCount = 0;
+    static NSDate *lastPrintTime = nil;
+    if (lastPrintTime == nil) {
+        lastPrintTime = [NSDate date];
+    }
+#endif
+    
+    if (![self isAmbilightRunning]) {
+        [lock unlock];
+        return;
+    }
+
+    CMFormatDescriptionRef formatDescription = CMSampleBufferGetFormatDescription(sampleBuffer);
+    CMVideoDimensions dimensions = CMVideoFormatDescriptionGetDimensions(formatDescription);
+    
+    //NSLog(@"W=%d H=%d", dimensions.width, dimensions.height);
+    
+    // Try to find the matching display id for the strand associations
+    for (int n = 0; n < (sizeof(displays) / sizeof(displays[0])); n++) {
+        if ((dimensions.width == displays[n].width) && (dimensions.height == displays[n].height)) {
+            //NSLog(@"Capture conversion for %d...", n);
+            
+            // Convert our frame to an NSImage
+            CVPixelBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
+            CVPixelBufferLockBaseAddress(imageBuffer, 0);
+            
+            void *baseAddress = CVPixelBufferGetBaseAddress(imageBuffer);
+            size_t bytesPerRow = CVPixelBufferGetBytesPerRow(imageBuffer);
+            size_t width = CVPixelBufferGetWidth(imageBuffer);
+            size_t height = CVPixelBufferGetHeight(imageBuffer);
+            
+            CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+            CGContextRef context = CGBitmapContextCreate(baseAddress, width, height, 8, bytesPerRow,
+                                                         colorSpace, kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Little);
+            if (context == nil) {
+                NSLog(@"Error creating context!");
+                break;
+            }
+            
+            CGImageRef quartzImage = CGBitmapContextCreateImage(context);
+            CVPixelBufferUnlockBaseAddress(imageBuffer,0);
+            
+            CGContextRelease(context);
+            CGColorSpaceRelease(colorSpace);
+            
+            NSBitmapImageRep *image = [[NSBitmapImageRep alloc] initWithCGImage:quartzImage];
+            CGImageRelease(quartzImage);
+            
+            [self visualizeThisImage:image];
+            break;
+        }
+    }
+    
+#ifdef DEBUG_PRINT_FPS
+    frameCount++;
+    NSDate *now = [NSDate date];
+    NSTimeInterval interval = [now timeIntervalSinceDate:lastPrintTime];
+    if (interval >= DEBUG_PRINT_FPS) {
+        NSLog(@"FPS: ~%.2f / %lu = %.2f", frameCount / interval,
+              (sizeof(displays) / sizeof(displays[0])), frameCount / interval / (sizeof(displays) / sizeof(displays[0])));
+        frameCount = 0;
+        lastPrintTime = now;
+    }
+#endif
+    
+    [lock unlock];
+}
+
+- (void)visualizeThisImage:(NSBitmapImageRep *)screen {
+    unsigned long width = [screen pixelsWide];
+    unsigned long height = [screen pixelsHigh];
+    
+    // Ensure we can handle the format of this display
+    NSInteger spp = [screen samplesPerPixel];
+    if (((spp != 3) && (spp != 4)) || ([screen isPlanar] == YES) || ([screen numberOfPlanes] != 1)) {
+        NSLog(@"Unknown image format for (%ld, %c, %ld)!\n", (long)spp, ([screen isPlanar] == YES) ? 'p' : 'n', (long)[screen numberOfPlanes]);
+        return;
+    }
+    
+    // Find out how the color components are ordered
+    BOOL alpha = NO;
+    if ([screen bitmapFormat] & NSAlphaFirstBitmapFormat) {
+        alpha = YES;
+    }
+    
+    // Try to find the matching display id for the strand associations
+    for (int n = 0; n < (sizeof(displays) / sizeof(displays[0])); n++) {
+        if ((width == displays[n].width) && (height == displays[n].height)) {
+            unsigned char *data = [screen bitmapData];
+            [self visualizeSingleDisplay:n Data:data Width:width Height:height SPP:spp Alpha:alpha];
+            return;
+        }
+    }
+}
+
+/*
 - (void)visualizeDisplay:(NSTimer *)time {
 #ifdef DEBUG_PRINT_FPS
     static NSInteger frameCount = 0;
@@ -484,30 +665,7 @@ UInt8 ledColorData[LED_COUNT * 3];
     // Create a Screenshot for all connected displays
     for (NSInteger i = 0; i < [lastDisplayIDs count]; i++) {
         NSBitmapImageRep *screen = [Screenshot screenshot:[lastDisplayIDs objectAtIndex:i]];
-        unsigned long width = [screen pixelsWide];
-        unsigned long height = [screen pixelsHigh];
-        
-        // Ensure we can handle the format of this display
-        NSInteger spp = [screen samplesPerPixel];
-        if (((spp != 3) && (spp != 4)) || ([screen isPlanar] == YES) || ([screen numberOfPlanes] != 1)) {
-            NSLog(@"Unknown image format for %ld (%ld, %c, %ld)!\n", (long)i, (long)spp, ([screen isPlanar] == YES) ? 'p' : 'n', (long)[screen numberOfPlanes]);
-            continue;
-        }
-        
-        // Find out how the color components are ordered
-        BOOL alpha = NO;
-        if ([screen bitmapFormat] & NSAlphaFirstBitmapFormat) {
-            alpha = YES;
-        }
-        
-        // Try to find the matching display id for the strand associations
-        for (int n = 0; n < (sizeof(displays) / sizeof(displays[0])); n++) {
-            if ((width == displays[n].width) && (height == displays[n].height)) {
-                unsigned char *data = [screen bitmapData];
-                [self visualizeSingleDisplay:n Data:data Width:width Height:height SPP:spp Alpha:alpha];
-                break;
-            }
-        }
+        [self visualizeThisImage:screen];
     }
     
     [self sendLEDFrame];
@@ -523,7 +681,8 @@ UInt8 ledColorData[LED_COUNT * 3];
     }
 #endif
     
-    timer = [NSTimer scheduledTimerWithTimeInterval:DISPLAY_DELAY target:self selector:@selector(visualizeDisplay:) userInfo:nil repeats:NO];
+    [self startAmbilightTimer];
 }
-
+*/
+ 
 @end
