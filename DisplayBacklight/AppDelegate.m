@@ -82,7 +82,7 @@ struct LEDStrand strands[] = {
 // but will probably cause high CPU-Usage.
 // (Run-Time of the algorithm is ignored here, so real speed will be
 // slightly lower.)
-#define DISPLAY_DELAY (1.0 / 30.0)
+#define DISPLAY_DELAY (1.0 / 20.0)
 
 // How many pixels to skip when calculating the average color.
 // Slightly increases performance and doesn't really alter the result.
@@ -99,6 +99,9 @@ struct LEDStrand strands[] = {
 
 // If this is defined it will print the FPS every DEBUG_PRINT_FPS seconds
 //#define DEBUG_PRINT_FPS 10
+
+// ToDo Change color-temperature depending on time of day to match f.lux adjustments
+#define TARGET_COLOR_TEMPERATURE 2800.0
 
 // ------------------------ Config ends here ------------------------
 
@@ -455,9 +458,18 @@ UInt8 ledColorData[LED_COUNT * 3];
                 // Calculate average color for this led
                 UInt32 color = [self calculateAverage:data Width:width Height:height SPP:spp Alpha:alpha StartX:x StartY:y EndX:endX EndY:endY];
                 
+#ifdef TARGET_COLOR_TEMPERATURE
+                struct Color3 c = { ((color & 0xFF0000) >> 16) / 255.0, ((color & 0x00FF00) >> 8) / 255.0, (color & 0x0000FF) / 255.0 };
+                c = getRGBfromTemperature(TARGET_COLOR_TEMPERATURE, c);
+                
+                ledColorData[led * 3] = (int)(c.r * 255.0);
+                ledColorData[(led * 3) + 1] = (int)(c.g * 255.0);
+                ledColorData[(led * 3) + 2] = (int)(c.b * 255.0);
+#else
                 ledColorData[led * 3] = (color & 0xFF0000) >> 16;
                 ledColorData[(led * 3) + 1] = (color & 0x00FF00) >> 8;
                 ledColorData[(led * 3) + 2] = color & 0x0000FF;
+#endif
                 
                 // Move to next LED
                 if ((strands[i].direction == DIR_LEFT) || (strands[i].direction == DIR_RIGHT)) {
@@ -524,6 +536,165 @@ UInt8 ledColorData[LED_COUNT * 3];
 #endif
     
     timer = [NSTimer scheduledTimerWithTimeInterval:DISPLAY_DELAY target:self selector:@selector(visualizeDisplay:) userInfo:nil repeats:NO];
+}
+
+// ----------------------------------------------------
+// ----------- Color Temperature Adjustment -----------
+// ----------------------------------------------------
+
+#define LUMINANCE_PRESERVATION 0.75
+#define EPSILON 1e-10
+#define SATURATION_FACTOR 0.9
+
+struct Color3 {
+    float r, g, b;
+};
+
+float saturateFloat(float v) {
+    if (v < 0.0f) {
+        return 0.0f;
+    } else if (v > 1.0f) {
+        return 1.0f;
+    } else {
+        return v;
+    }
+}
+
+struct Color3 saturateColor(struct Color3 v) {
+    v.r = saturateFloat(v.r);
+    v.g = saturateFloat(v.g);
+    v.b = saturateFloat(v.b);
+    return v;
+}
+
+struct Color3 colorTemperatureToRGB(float temperatureInKelvins) {
+    struct Color3 retColor;
+    
+    if (temperatureInKelvins < 1000.0) {
+        temperatureInKelvins = 1000.0;
+    } else if (temperatureInKelvins > 40000) {
+        temperatureInKelvins = 40000.0;
+    }
+    
+    temperatureInKelvins /= 100.0;
+    
+    if (temperatureInKelvins <= 66.0) {
+        retColor.r = 1.0;
+        retColor.g = saturateFloat(0.39008157876901960784 * log(temperatureInKelvins) - 0.63184144378862745098);
+    } else {
+        float t = temperatureInKelvins - 60.0;
+        retColor.r = saturateFloat(1.29293618606274509804 * pow(t, -0.1332047592));
+        retColor.g = saturateFloat(1.12989086089529411765 * pow(t, -0.0755148492));
+    }
+    
+    if (temperatureInKelvins >= 66.0) {
+        retColor.b = 1.0;
+    } else if (temperatureInKelvins <= 19.0) {
+        retColor.b = 0.0;
+    } else {
+        retColor.b = saturateFloat(0.54320678911019607843 * log(temperatureInKelvins - 10.0) - 1.19625408914);
+    }
+    
+    return retColor;
+}
+
+float luminance(struct Color3 color) {
+    float min = fmin(fmin(color.r, color.g), color.b);
+    float max = fmax(fmax(color.r, color.g), color.b);
+    return (max + min) / 2.0;
+}
+
+struct Color3 HUEtoRGB(float h) {
+    float r = fabs(h * 6.0 - 3.0) - 1.0;
+    float g = 2.0 - fabs(h * 6.0 - 2.0);
+    float b = 2.0 - fabs(h * 6.0 - 4.0);
+    struct Color3 ret = { r, g, b };
+    return saturateColor(ret);
+}
+
+struct Color3 HSLtoRGB(struct Color3 hsl) {
+    struct Color3 rgb = HUEtoRGB(hsl.r);
+    float c = (1.0 - fabs(2.0 * hsl.b - 1.0)) * hsl.g;
+    struct Color3 ret = { (rgb.r - 0.5) * c + hsl.b, (rgb.g - 0.5) * c + hsl.b, (rgb.b - 0.5) * c + hsl.b };
+    return ret;
+}
+
+struct Color3 RGBtoHCV(struct Color3 rgb) {
+    // Based on work by Sam Hocevar and Emil Persson
+    
+    struct Color3 p;
+    float pw;
+    if (rgb.g < rgb.b) {
+        p.r = rgb.b;
+        p.g = rgb.g;
+        p.b = -1.0;
+        pw = 2.0 / 3.0;
+    } else {
+        p.r = rgb.g;
+        p.g = rgb.b;
+        p.b = 0.0;
+        pw = -1.0 / 3.0;
+    }
+    
+    struct Color3 q;
+    float qw;
+    if (rgb.r < p.r) {
+        q.r = p.r;
+        q.g = p.g;
+        q.b = pw;
+        qw = rgb.r;
+    } else {
+        q.r = rgb.r;
+        q.g = p.g;
+        q.b = p.b;
+        qw = p.r;
+    }
+    
+    float c = q.r - fmin(qw, q.g);
+    float h = fabs((qw - q.g) / (6.0 * c + EPSILON) + q.b);
+    
+    struct Color3 res = { h, c, q.r };
+    return res;
+}
+
+struct Color3 RGBtoHSL(struct Color3 rgb) {
+    struct Color3 hcv = RGBtoHCV(rgb);
+    float l = hcv.b - hcv.g * 0.5;
+    float s = hcv.g / (1.0 - fabs(l * 2.0 - 1.0) + EPSILON);
+    struct Color3 res = { hcv.r, s, l };
+    return res;
+}
+
+float mixFloat(float a, float b, float factor) {
+    return a + ((b - a) * factor);
+}
+
+struct Color3 mixColor(struct Color3 a, struct Color3 b, float factor) {
+    struct Color3 res;
+    res.r = mixFloat(a.r, b.r, factor);
+    res.g = mixFloat(a.g, b.g, factor);
+    res.b = mixFloat(a.b, b.b, factor);
+    return res;
+}
+
+struct Color3 blendColor(struct Color3 a, struct Color3 b) {
+    struct Color3 res;
+    res.r = a.r * b.r;
+    res.g = a.g * b.g;
+    res.b = a.b * b.b;
+    return res;
+}
+
+// http://www.tannerhelland.com/4435/convert-temperature-rgb-algorithm-code/
+// Given a temperature (in Kelvin), estimate an RGB equivalent
+struct Color3 getRGBfromTemperature(float temperature, struct Color3 color) {
+    struct Color3 tempColor = colorTemperatureToRGB(temperature);
+    float originalLuminance = luminance(color);
+    struct Color3 blended = mixColor(color, blendColor(color, tempColor), SATURATION_FACTOR);
+    struct Color3 resultHSL = RGBtoHSL(blended);
+    struct Color3 converted = { resultHSL.r, resultHSL.g, originalLuminance };
+    struct Color3 luminancePreservedRGB = HSLtoRGB(converted);
+    return mixColor(blended, luminancePreservedRGB, LUMINANCE_PRESERVATION);
 }
 
 @end
