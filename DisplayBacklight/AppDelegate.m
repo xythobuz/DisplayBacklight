@@ -77,12 +77,12 @@ struct LEDStrand strands[] = {
 // This defines the update-speed of the Ambilight, in seconds.
 // With a baudrate of 115200 and 156 LEDs and 14-bytes Magic-Word,
 // theoretically you could transmit:
-//     115200 / (14 + (156 * 3)) * 8 =~ 30 Frames per Second
+//     115200 / ((14 + (156 * 3)) * 8) =~ 30 Frames per Second
 // Inserting (1.0 / 30.0) here would try to reach these 30FPS,
 // but will probably cause high CPU-Usage.
 // (Run-Time of the algorithm is ignored here, so real speed will be
 // slightly lower.)
-#define DISPLAY_DELAY (1.0 / 20.0)
+#define DISPLAY_DELAY (1.0 / 30.0)
 
 // How many pixels to skip when calculating the average color.
 // Slightly increases performance and doesn't really alter the result.
