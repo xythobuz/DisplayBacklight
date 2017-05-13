@@ -21,6 +21,8 @@ The color data is transmitted using the serial port and the USB-UART converter b
 
 The macOS host software is opening the connection to the serial port, grabbing a screenshot, processing the edges to calculate each LED color and finally sending it to the device.
 
+[![Ambilight Screenshot](http://xythobuz.de/img/ambilight-3.png)](http://xythobuz.de/img/ambilight-3.png)
+
 ## License
 
 DisplayBacklight itself is made by Thomas Buck <xythobuz@xythobuz.de> and released under a BSD 2-Clause License. See the accompanying COPYING file.
