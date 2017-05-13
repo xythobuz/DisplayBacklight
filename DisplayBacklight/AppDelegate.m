@@ -100,6 +100,10 @@ struct LEDStrand strands[] = {
 // If this is defined it will print the FPS every DEBUG_PRINT_FPS seconds
 //#define DEBUG_PRINT_FPS 10
 
+// When grabbing screenshots the resulting picture will not have any color filtering
+// effects applied, as is the case when using software like f.lux that makes the colors
+// warmer at night. So I've added the algorithm to 'warm up' the colors myself. Set
+// the target temperature in Kelvin here, it should be the same as in f.lux.
 // ToDo Change color-temperature depending on time of day to match f.lux adjustments
 #define TARGET_COLOR_TEMPERATURE 2800.0
 
