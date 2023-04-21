@@ -10,7 +10,7 @@
 //
 
 // Uncomment to store a screenshot for each display in the build directory
-//#define DEBUG_SCREENSHOT
+// #define DEBUG_SCREENSHOT
 
 #import "AppDelegate.h"
 #import "Screenshot.h"
@@ -123,18 +123,24 @@ static void displayRegisterReconfigurationCallback(CGDirectDisplayID display, CG
 }
 
 + (NSBitmapImageRep *)screenshot:(NSNumber *)displayID {
-    CGImageRef image = CGDisplayCreateImage([displayID unsignedIntValue]);
+    NSLog(@"displayID: %@", displayID);
+    CGImageRef image = CGDisplayCreateImage([displayID unsignedIntValue]); // THROWS [default] 0 is not a valid connection ID.
     NSBitmapImageRep *imgRep = [[NSBitmapImageRep alloc] initWithCGImage:image];
     CFRelease(image);
     
 #ifdef DEBUG_SCREENSHOT
     NSData *data = [imgRep representationUsingType:NSPNGFileType properties:[NSDictionary dictionary]];
-    NSString *path = [NSString stringWithFormat:@"test-%u-%@.png", [displayID unsignedIntValue], [Screenshot displayNameFromDisplayID:displayID]];
+    NSArray* paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+    NSString* documentsDirectory = [paths objectAtIndex:0];
+    NSString *fileName = [NSString stringWithFormat:@"test-%u-%@.png", [displayID unsignedIntValue], [Screenshot displayNameFromDisplayID:displayID]];
+    NSString *filePath = [NSString stringWithFormat:@"%@/%@", [NSSearchPathForDirectoriesInDomains(NSDesktopDirectory, NSUserDomainMask, YES) firstObject], fileName];
+
+//    NSString *path = [NSString stringWithFormat:@"test-%u-%@.png", [displayID unsignedIntValue], [Screenshot displayNameFromDisplayID:displayID]];
     NSError *error;
-    if ([data writeToFile:path options:0 error:&error] == YES) {
-        NSLog(@"Wrote debug image to \"%@\"\n", path);
+    if ([data writeToFile:filePath options:0 error:&error] == YES) {
+        NSLog(@"Wrote debug image to \"%@\"\n", filePath);
     } else {
-        NSLog(@"Error writing debug image to \"%@\": %@\n", path, error);
+        NSLog(@"Error writing debug image to \"%@\": %@\n", filePath, error);
     }
 #endif
     

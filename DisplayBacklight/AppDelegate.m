@@ -17,7 +17,7 @@
 // always be zero or the width / height of your display.
 
 // Define the amount of LEDs in your strip here
-#define LED_COUNT 156
+#define LED_COUNT 20
 
 // This defines how large the averaging-boxes should be in the dimension perpendicular
 // to the strand. So eg. for a bottom strand, how high the box should be in px.
@@ -25,11 +25,18 @@
 
 // Identify your displays here. Currently they're only distinguished by their resolution.
 // The ID will be the index in the list, so the first entry is display 0 and so on.
+//struct DisplayAssignment displays[] = {
+//    { 1920, 1080 },
+//    {  900, 1600 }
+//};
 struct DisplayAssignment displays[] = {
-    { 1920, 1080 },
-    {  900, 1600 }
+    { 3360, 1890 },
+    { 1792, 1120 }
 };
 
+// used to match screensize to the one of the screenshot. In my case screenshots had the doubled size of the monitor size (1600 gets 3200)
+#define RETINA_DIVIDER 2
+#define DEBUG_SIZES
 // This defines the orientation and placement of your strands and is the most important part.
 // It begins with the LED IDs this strand includes, starting with ID 0 up to LED_COUNT - 1.
 // The second item is the length of this strip, as in the count of LEDs in it.
@@ -62,16 +69,24 @@ struct DisplayAssignment displays[] = {
 //                               4 |  <--  <--  |
 //                                 |------------|
 //                                       29
+//
+//struct LEDStrand strands[] = {
+//    {   0, 33, 0, 1920, 1080,  DIR_LEFT, 1920 / 33 },
+//    {  33, 19, 0,    0, 1080,    DIR_UP, 1080 / 19 },
+//    {  52, 33, 0,    0,    0, DIR_RIGHT, 1920 / 33 },
+//    {  85,  5, 1,    0,  250,    DIR_UP,  250 / 5 },
+//    {  90, 17, 1,    0,    0, DIR_RIGHT,  900 / 17 },
+//    { 107, 28, 1,  900,    0,  DIR_DOWN, 1600 / 28 },
+//    { 135, 17, 1,  900, 1600,  DIR_LEFT,  900 / 17 },
+//    { 152,  4, 1,    0, 1600,    DIR_UP,  180 / 4 }
+//};
 
+// { FIRST_LED - 1, LED_LENGTH_COUNT, DISPLAY_ID, X_COORD, Y_COORD, DIRECtiON, AVERAGE_PIXEL_DIVIDED_BY_LEDS}
 struct LEDStrand strands[] = {
-    {   0, 33, 0, 1920, 1080,  DIR_LEFT, 1920 / 33 },
-    {  33, 19, 0,    0, 1080,    DIR_UP, 1080 / 19 },
-    {  52, 33, 0,    0,    0, DIR_RIGHT, 1920 / 33 },
-    {  85,  5, 1,    0,  250,    DIR_UP,  250 / 5 },
-    {  90, 17, 1,    0,    0, DIR_RIGHT,  900 / 17 },
-    { 107, 28, 1,  900,    0,  DIR_DOWN, 1600 / 28 },
-    { 135, 17, 1,  900, 1600,  DIR_LEFT,  900 / 17 },
-    { 152,  4, 1,    0, 1600,    DIR_UP,  180 / 4 }
+    {   0,  5, 0, 3360, 1890,  DIR_LEFT, 3360 / 5 },
+    {   5,  5, 0,    0, 1890,  DIR_UP, 1890 / 5 },
+    {  10,  5, 0,    0,    0, DIR_RIGHT, 3360 / 5 },
+    {  15,  5, 0,    0,  250, DIR_DOWN, 1890 / 5 },
 };
 
 // This defines the update-speed of the Ambilight, in seconds.
@@ -98,14 +113,14 @@ struct LEDStrand strands[] = {
 #define PREF_TURNED_ON @"IsEnabled"
 
 // If this is defined it will print the FPS every DEBUG_PRINT_FPS seconds
-//#define DEBUG_PRINT_FPS 10
+// #define DEBUG_PRINT_FPS 10
 
 // When grabbing screenshots the resulting picture will not have any color filtering
 // effects applied, as is the case when using software like f.lux that makes the colors
 // warmer at night. So I've added the algorithm to 'warm up' the colors myself. Set
 // the target temperature in Kelvin here, it should be the same as in f.lux.
 // ToDo Change color-temperature depending on time of day to match f.lux adjustments
-#define TARGET_COLOR_TEMPERATURE 2800.0
+// #define TARGET_COLOR_TEMPERATURE 2800.0
 
 // ------------------------ Config ends here ------------------------
 
@@ -157,7 +172,7 @@ struct LEDStrand strands[] = {
     statusImage = [NSImage imageNamed:@"MenuIcon"];
     statusItem = [[NSStatusBar systemStatusBar] statusItemWithLength:NSSquareStatusItemLength];
     [statusImage setTemplate:YES];
-    [statusItem setImage:statusImage];
+    [statusItem.button setImage:statusImage];
     [statusItem setMenu:statusMenu];
     
     // Prepare brightness menu
@@ -181,7 +196,7 @@ struct LEDStrand strands[] = {
                 [serial setPortName:savedPort];
                 if (![serial openPort]) {
                     foundPort = YES;
-                    [[menuPorts itemAtIndex:i] setState:NSOnState];
+                    [[menuPorts itemAtIndex:i] setState:NSControlStateValueOn];
                 }
             }
         }
@@ -192,13 +207,13 @@ struct LEDStrand strands[] = {
             // to the chip-id and change every time the adapter is re-enumerated.
             // That means we may have to try and find the device again after the
             // stored name does no longer exist. In this case, we simply try the first
-            // device that starts with /dev/cu.wchusbserial*...
+            // device that starts with /dev/cu.usbmodem*...
             for (int i = 0; i < [ports count]; i++) {
-                if ([[ports objectAtIndex:i] hasPrefix:@"/dev/cu.wchusbserial"]) {
+                if ([[ports objectAtIndex:i] hasPrefix:@"/dev/cu.usbmodem"]) {
                     // Try to open serial port
                     [serial setPortName:savedPort];
                     if (![serial openPort]) {
-                        [[menuPorts itemAtIndex:i] setState:NSOnState];
+                        [[menuPorts itemAtIndex:i] setState:NSControlStateValueOn];
                         
                         // Reattempt next matching device when opening this one fails.
                         break;
@@ -214,7 +229,7 @@ struct LEDStrand strands[] = {
     if (ambilightIsOn) {
         timer = [NSTimer scheduledTimerWithTimeInterval:DISPLAY_DELAY target:self selector:@selector(visualizeDisplay:) userInfo:nil repeats:NO];
         
-        [buttonAmbilight setState:NSOnState];
+        [buttonAmbilight setState:NSControlStateValueOn];
     }
 }
 
@@ -247,7 +262,7 @@ struct LEDStrand strands[] = {
         // Mark it if it is currently open
         if ([serial isOpen]) {
             if ([[ports objectAtIndex:i] isEqualToString:[serial portName]]) {
-                [[menuPorts itemAtIndex:i] setState:NSOnState];
+                [[menuPorts itemAtIndex:i] setState:NSControlStateValueOn];
             }
         }
     }
@@ -261,11 +276,11 @@ struct LEDStrand strands[] = {
     
     // De-select all other ports
     for (int i = 0; i < [menuPorts numberOfItems]; i++) {
-        [[menuPorts itemAtIndex:i] setState:NSOffState];
+        [[menuPorts itemAtIndex:i] setState:NSControlStateValueOff];
     }
     
     // Select only the current port
-    [source setState:NSOnState];
+    [source setState:NSControlStateValueOn];
     
     // Close previously opened port, if any
     if ([serial isOpen]) {
@@ -279,18 +294,18 @@ struct LEDStrand strands[] = {
     }
     
     // Turn off ambilight button
-    [buttonAmbilight setState:NSOffState];
+    [buttonAmbilight setState:NSControlStateValueOff];
     
     // Try to open selected port
     [serial setPortName:[source title]];
     if ([serial openPort] != 0) {
-        [source setState:NSOffState];
+        [source setState:NSControlStateValueOff];
     }
 }
 
 - (IBAction)toggleAmbilight:(NSMenuItem *)sender {
-    if ([sender state] == NSOnState) {
-        [sender setState:NSOffState];
+    if ([sender state] == NSControlStateValueOn) {
+        [sender setState:NSControlStateValueOff];
         
         // Stop previous timer setting
         if (timer != nil) {
@@ -305,7 +320,7 @@ struct LEDStrand strands[] = {
         [store setObject:[NSNumber numberWithBool:NO] forKey:PREF_TURNED_ON];
         [store synchronize];
     } else {
-        [sender setState:NSOnState];
+        [sender setState:NSControlStateValueOn];
         
         timer = [NSTimer scheduledTimerWithTimeInterval:DISPLAY_DELAY target:self selector:@selector(visualizeDisplay:) userInfo:nil repeats:NO];
         
@@ -323,7 +338,7 @@ struct LEDStrand strands[] = {
         [timer invalidate];
         timer = nil;
         
-        [buttonAmbilight setState:NSOffState];
+        [buttonAmbilight setState:NSControlStateValueOff];
     }
 }
 
@@ -332,7 +347,7 @@ struct LEDStrand strands[] = {
     
     if (restartAmbilight) {
         restartAmbilight = NO;
-        [buttonAmbilight setState:NSOnState];
+        [buttonAmbilight setState:NSControlStateValueOn];
         
         timer = [NSTimer scheduledTimerWithTimeInterval:DISPLAY_DELAY target:self selector:@selector(visualizeDisplay:) userInfo:nil repeats:NO];
     }
@@ -495,13 +510,15 @@ UInt8 ledColorData[LED_COUNT * 3];
     }
 #endif
     
-    //NSLog(@"Running Ambilight-Algorithm (%lu)...", (unsigned long)[lastDisplayIDs count]);
+    NSLog(@"Running Ambilight-Algorithm (%lu)...", (unsigned long)[lastDisplayIDs count]);
     
     // Create a Screenshot for all connected displays
     for (NSInteger i = 0; i < [lastDisplayIDs count]; i++) {
         NSBitmapImageRep *screen = [Screenshot screenshot:[lastDisplayIDs objectAtIndex:i]];
-        unsigned long width = [screen pixelsWide];
-        unsigned long height = [screen pixelsHigh];
+        
+
+        unsigned long width = [screen pixelsWide] / RETINA_DIVIDER;
+        unsigned long height = [screen pixelsHigh] / RETINA_DIVIDER;
         
         // Ensure we can handle the format of this display
         NSInteger spp = [screen samplesPerPixel];
@@ -512,12 +529,16 @@ UInt8 ledColorData[LED_COUNT * 3];
         
         // Find out how the color components are ordered
         BOOL alpha = NO;
-        if ([screen bitmapFormat] & NSAlphaFirstBitmapFormat) {
+        if ([screen bitmapFormat] & NSBitmapFormatAlphaFirst) {
             alpha = YES;
         }
         
         // Try to find the matching display id for the strand associations
         for (int n = 0; n < (sizeof(displays) / sizeof(displays[0])); n++) {
+#ifdef DEBUG_SIZES
+            NSLog(@"Width: %ld AND", width );
+            NSLog(@" size (%i) MUST match", displays[n].width );
+#endif
             if ((width == displays[n].width) && (height == displays[n].height)) {
                 unsigned char *data = [screen bitmapData];
                 [self visualizeSingleDisplay:n Data:data Width:width Height:height SPP:spp Alpha:alpha];

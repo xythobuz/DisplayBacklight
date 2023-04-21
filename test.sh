@@ -12,17 +12,17 @@ if [ $# -ne 3 ]; then
     exit
 fi
 
-PORTFILE=`ls /dev/tty.wchusbserial* | head -n 1`
+PORTFILE=`ls /dev/tty.usbmodem* | head -n 1`
 echo "Using $PORTFILE as serial port..."
 
 echo "Preparing data to send..."
 echo -n "xythobuzRGBled" > $DATA_FILE
-for i in {1..156}; do
+for i in {1..20}; do
     echo -n -e "\x$1\x$2\x$3" >> $DATA_FILE
 done
 
 echo "Opening serial port..."
-serialHelper115200 -rw $PORTFILE >/dev/null 2>/dev/null &
+./serialHelper115200 -rw $PORTFILE > serial_output.txt 2>&1 &
 TERM_PID=$!
 echo "PID is $TERM_PID"
 

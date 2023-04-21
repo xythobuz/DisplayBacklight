@@ -12,7 +12,7 @@ if [ $# -ne 6 ]; then
     exit
 fi
 
-PORTFILE=`ls /dev/tty.wchusbserial* | head -n 1`
+PORTFILE=`ls /dev/tty.usbmodem* | head -n 1`
 echo "Using $PORTFILE as serial port..."
 
 echo "WARNING: This is toggling the LEDs very fast between your two colors!"
