@@ -14,6 +14,7 @@
 
 #import <Cocoa/Cocoa.h>
 #import <IOKit/IOKitLib.h>
+#import <mach/mach.h>
 #import <IOKit/serial/IOSerialKeys.h>
 
 #import <termios.h>
@@ -182,7 +183,7 @@
                 NSLog(@"Too many send errors! Giving up...\n");
 #endif
                 return;
-            }
+            }//
         } else {
             sent += ret;
         }
@@ -265,7 +266,7 @@
     while ((modemService = IOIteratorNext(serialPortIterator)) && (i < (maxPathCount - 1))) {
         CFTypeRef   deviceFilePathAsCFString;
         
-        // Get the callout device's path (/dev/cu.xxxxx).
+        // Get the callout device's path (^/cu.xxxxx).
         // The callout device should almost always be
         // used. You would use the dialin device (/dev/tty.xxxxx) when
         // monitoring a serial port for

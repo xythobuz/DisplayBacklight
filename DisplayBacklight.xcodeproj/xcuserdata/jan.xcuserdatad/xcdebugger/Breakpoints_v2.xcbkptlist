@@ -1,0 +1,307 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Bucket
+   uuid = "7C6DF065-A0A8-4D10-A763-09721CFF5647"
+   type = "1"
+   version = "2.0">
+   <Breakpoints>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "26C0B3CF-C299-40DF-8468-A7700CB1845F"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "DisplayBacklight/AppDelegate.m"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "85"
+            endingLineNumber = "85"
+            landmarkName = "unknown"
+            landmarkType = "0">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "EE2AF2E4-0536-4101-9B4E-2132FFE1D136"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "DisplayBacklight/Screenshot.m"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "163"
+            endingLineNumber = "163">
+            <Locations>
+               <Location
+                  uuid = "EE2AF2E4-0536-4101-9B4E-2132FFE1D136 - dfbfaaf036a13313"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "+[Screenshot screenshot:]"
+                  moduleName = "DisplayBacklight"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/jan/Coding/github/DisplayBacklight/DisplayBacklight/Screenshot.m"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "166"
+                  endingLineNumber = "166"
+                  offsetFromSymbolStart = "449">
+               </Location>
+               <Location
+                  uuid = "EE2AF2E4-0536-4101-9B4E-2132FFE1D136 - dfbfaaf036a133b6"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "+[Screenshot screenshot:]"
+                  moduleName = "DisplayBacklight"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/jan/Coding/github/DisplayBacklight/DisplayBacklight/Screenshot.m"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "163"
+                  endingLineNumber = "163"
+                  offsetFromSymbolStart = "427">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "B1BDA6C4-6136-4090-9CC7-076E60E438B0"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "DisplayBacklight/Screenshot.m"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "167"
+            endingLineNumber = "167">
+            <Locations>
+               <Location
+                  uuid = "B1BDA6C4-6136-4090-9CC7-076E60E438B0 - dfbfaaf036a13332"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "+[Screenshot screenshot:]"
+                  moduleName = "DisplayBacklight"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/jan/Coding/github/DisplayBacklight/DisplayBacklight/Screenshot.m"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "167"
+                  endingLineNumber = "167"
+                  offsetFromSymbolStart = "484">
+               </Location>
+               <Location
+                  uuid = "B1BDA6C4-6136-4090-9CC7-076E60E438B0 - dfbfaaf036a13332"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "+[Screenshot screenshot:]"
+                  moduleName = "DisplayBacklight"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/jan/Coding/github/DisplayBacklight/DisplayBacklight/Screenshot.m"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "167"
+                  endingLineNumber = "167"
+                  offsetFromSymbolStart = "449">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "92BB2CF8-467B-48D0-ABE7-9FAD37AB58EC"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "DisplayBacklight/AppDelegate.m"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "544"
+            endingLineNumber = "544"
+            landmarkName = "-visualizeDisplay:"
+            landmarkType = "7">
+            <Locations>
+               <Location
+                  uuid = "92BB2CF8-467B-48D0-ABE7-9FAD37AB58EC - 4ccce2b416842f54"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "-[AppDelegate visualizeDisplay:]"
+                  moduleName = "DisplayBacklight"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/jan/Coding/github/DisplayBacklight/DisplayBacklight/AppDelegate.m"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "538"
+                  endingLineNumber = "538"
+                  offsetFromSymbolStart = "714">
+               </Location>
+               <Location
+                  uuid = "92BB2CF8-467B-48D0-ABE7-9FAD37AB58EC - 4ccce2b416842f54"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "-[AppDelegate visualizeDisplay:]"
+                  moduleName = "DisplayBacklight"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/jan/Coding/github/DisplayBacklight/DisplayBacklight/AppDelegate.m"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "538"
+                  endingLineNumber = "538"
+                  offsetFromSymbolStart = "755">
+               </Location>
+               <Location
+                  uuid = "92BB2CF8-467B-48D0-ABE7-9FAD37AB58EC - 4ccce2b416842f54"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "-[AppDelegate visualizeDisplay:]"
+                  moduleName = "DisplayBacklight"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/jan/Coding/github/DisplayBacklight/DisplayBacklight/AppDelegate.m"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "538"
+                  endingLineNumber = "538"
+                  offsetFromSymbolStart = "659">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "FD122A7A-E3CA-48CC-A56E-FCBCCDA52EB8"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "DisplayBacklight/AppDelegate.m"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "550"
+            endingLineNumber = "550"
+            landmarkName = "-visualizeDisplay:"
+            landmarkType = "7">
+            <Locations>
+               <Location
+                  uuid = "FD122A7A-E3CA-48CC-A56E-FCBCCDA52EB8 - 4ccce2b416842d65"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "-[AppDelegate visualizeDisplay:]"
+                  moduleName = "DisplayBacklight"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/jan/Coding/github/DisplayBacklight/DisplayBacklight/AppDelegate.m"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "553"
+                  endingLineNumber = "553"
+                  offsetFromSymbolStart = "794">
+               </Location>
+               <Location
+                  uuid = "FD122A7A-E3CA-48CC-A56E-FCBCCDA52EB8 - 4ccce2b416842e92"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "-[AppDelegate visualizeDisplay:]"
+                  moduleName = "DisplayBacklight"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/jan/Coding/github/DisplayBacklight/DisplayBacklight/AppDelegate.m"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "544"
+                  endingLineNumber = "544"
+                  offsetFromSymbolStart = "797">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "26F7357E-9E42-4747-8E6A-B0FA790BA4B4"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "DisplayBacklight/AppDelegate.m"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "227"
+            endingLineNumber = "227"
+            landmarkName = "-applicationDidFinishLaunching:"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "7DBA6310-A943-42E3-8444-1701C7783000"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "DisplayBacklight/AppDelegate.m"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "373"
+            endingLineNumber = "373"
+            landmarkName = "-sendLEDFrame"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "DF5ECEAB-55B2-47C7-A493-0075F4E0F134"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "DisplayBacklight/AppDelegate.m"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "378"
+            endingLineNumber = "378"
+            landmarkName = "-sendNullFrame"
+            landmarkType = "7">
+            <Locations>
+               <Location
+                  uuid = "DF5ECEAB-55B2-47C7-A493-0075F4E0F134 - 85e4f58d6a269ee3"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "-[AppDelegate sendNullFrame]"
+                  moduleName = "DisplayBacklight"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/jan/Coding/github/DisplayBacklight/DisplayBacklight/AppDelegate.m"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "378"
+                  endingLineNumber = "378"
+                  offsetFromSymbolStart = "83">
+               </Location>
+               <Location
+                  uuid = "DF5ECEAB-55B2-47C7-A493-0075F4E0F134 - 85e4f58d6a269ee3"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "-[AppDelegate sendNullFrame]"
+                  moduleName = "DisplayBacklight"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/jan/Coding/github/DisplayBacklight/DisplayBacklight/AppDelegate.m"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "378"
+                  endingLineNumber = "378"
+                  offsetFromSymbolStart = "16">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+   </Breakpoints>
+</Bucket>
